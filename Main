@@ -1,0 +1,155 @@
+import glfw
+import glm
+import numpy as np
+from OpenGL.GL import *
+import Shader
+import Grid
+
+# Settings
+SCR_WIDTH = 800
+SCR_HEIGHT = 600
+
+
+def get_file_content(file):
+    with open(file) as f:
+        content = f.read()
+    return content
+
+
+def framebuffer_size_callback(window, width, height):
+    if width != 0 and height != 0:
+        width = width
+        height = height
+        glViewport(0, 0, width, height)
+
+
+def create_v_array():
+    vertexArray = []
+    indexArray = []
+
+    for x in range(-100, 102, 2):
+        # To draw lines across x axis from z = -1 to z = 1
+        vertexArray.append(glm.vec3(x / 100.0, 0.0, -1.0))  # Vertex position 1
+        vertexArray.append(glm.vec3(1.0, 1.0, 1.0))  # color for v1
+        vertexArray.append(glm.vec3(x / 100.0, 0.0, 1.0))  # Vertex position 2
+        vertexArray.append(glm.vec3(1.0, 1.0, 1.0))  # color for v2
+
+    for z in range(-100, 102, 2):
+        # To draw lines across z axis from x = -1 to x = 1
+        vertexArray.append(glm.vec3(-1.0, 0.0, z / 100.0))  # Vertex position 1
+        vertexArray.append(glm.vec3(1.0, 1.0, 1.0))  # color for v1
+        vertexArray.append(glm.vec3(1.0, 0.0, z / 100.0))  # Vertex position 2
+        vertexArray.append(glm.vec3(1.0, 1.0, 1.0))  # color for v2
+
+    for i in range(10000):
+        indexArray.append(i)
+
+    vao = GLuint()
+    vbo = GLuint()
+    ebo = GLuint()
+
+    vertexArray = np.array(vertexArray, dtype=np.float32)
+    indexArray = np.array(indexArray, dtype=np.uint32)
+
+    # Bind vao
+    glGenVertexArrays(1, vao)
+    glBindVertexArray(vao)
+
+    # Upload Vertex Buffer (VBO) to the GPU, keep a reference to it (vertexBufferObject)
+    glGenBuffers(1, vbo)
+    glBindBuffer(GL_ARRAY_BUFFER, vbo)
+    glBufferData(GL_ARRAY_BUFFER, vertexArray.nbytes, vertexArray, GL_STATIC_DRAW)
+
+    # Upload Index Buffer (EBO) to the GPU, keep a reference to it (elementBufferObject)
+    glGenBuffers(1, ebo)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexArray.nbytes, indexArray, GL_STATIC_DRAW)
+
+    # Position
+    glVertexAttribPointer(0,
+                          3,
+                          GL_FLOAT,
+                          GL_FALSE,
+                          24,
+                          None
+                          )
+    glEnableVertexAttribArray(0)
+
+    # Color
+    glVertexAttribPointer(1,
+                          3,
+                          GL_FLOAT,
+                          GL_FALSE,
+                          24,
+                          ctypes.c_void_p(12)
+                          )
+    glEnableVertexAttribArray(1)
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    glBindVertexArray(0)
+
+    return vao
+
+
+def main():
+    # Initialize the library
+    glfw.glewExperimental = GL_TRUE
+
+    if not glfw.init():
+        return
+
+    glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+    glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 2)
+    glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+    glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL_TRUE)
+
+    # Create a windowed mode window and its OpenGL context
+    window = glfw.create_window(SCR_WIDTH, SCR_HEIGHT, "OpenGL", None, None)
+    if not window:
+        glfw.terminate()
+        return
+
+    # Make the window's context current
+    glfw.make_context_current(window)
+    glfw.set_framebuffer_size_callback(window, framebuffer_size_callback)
+
+    glEnable(GL_DEPTH_TEST)
+    glDepthFunc(GL_LESS)
+
+    shader = Shader.Shader("VertexShader.vsh", "FragmentShader.fsh")
+    #vao = create_v_array()
+
+    grid = Grid.Grid()
+    glUseProgram(shader.ID)
+
+    # Loop until the user closes the window
+    while not glfw.window_should_close(window):
+        glClearColor(0.2, 0.3, 0.3, 1.0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        glUseProgram(shader.ID)
+        #glBindVertexArray(vao)
+
+        model = glm.mat4(1)
+        view = glm.mat4(1)
+
+        model = glm.rotate(model, glm.radians(15.0), glm.vec3(1.0, 0.0, 0.0))
+        view = glm.translate(view, glm.vec3(0.0, 0.0, -1.0))
+        projection = glm.perspective(glm.radians(45.0), (SCR_WIDTH/SCR_HEIGHT), 0.1, 100.0)
+
+        shader.set_mat4("model", model)
+        shader.set_mat4("view", view)
+        shader.set_mat4("projection", projection)
+
+        grid.draw(shader)
+        #glBindVertexArray(vao)
+        #glDrawElements(GL_LINES, 20000, GL_UNSIGNED_INT, None)
+
+        glfw.swap_buffers(window)
+        glfw.poll_events()
+
+    glfw.terminate()
+
+
+if __name__ == "__main__":
+    main()
