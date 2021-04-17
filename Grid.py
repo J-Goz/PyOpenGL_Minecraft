@@ -10,10 +10,12 @@ import Shader
 class Grid:
     vertexArray = []
     indexArray = []
-    model = glm.mat4(1)
+
     shader = None
 
     def __init__(self):
+        self.model = glm.mat4(1)
+
         self.create_vertex_array()
         self.create_index_array()
 
@@ -22,7 +24,7 @@ class Grid:
         self.ebo = GLuint()
 
         self.vertexArray = np.array(self.vertexArray, dtype=np.float32)
-        self.indexArray = np.array(self.indexArray, dtype=np.float32)
+        self.indexArray = np.array(self.indexArray, dtype=np.uint32)
 
         # Bind vao
         glGenVertexArrays(1, self.vao)
